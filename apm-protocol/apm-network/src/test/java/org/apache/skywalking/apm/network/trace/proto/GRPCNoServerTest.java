@@ -27,15 +27,15 @@ import io.grpc.internal.DnsNameResolverProvider;
 import io.grpc.netty.NettyChannelBuilder;
 import io.grpc.stub.StreamObserver;
 import org.junit.Assert;
-import org.apache.skywalking.apm.network.language.agent.Downstream;
-import org.apache.skywalking.apm.network.language.agent.TraceSegmentServiceGrpc;
-import org.apache.skywalking.apm.network.language.agent.UpstreamSegment;
+//import org.apache.skywalking.apm.network.language.agent.Downstream;
+//import org.apache.skywalking.apm.network.language.agent.TraceSegmentServiceGrpc;
+//import org.apache.skywalking.apm.network.language.agent.UpstreamSegment;
 
 /**
  * @author wusheng
  */
 public class GRPCNoServerTest {
-    public static void main(String[] args) throws InterruptedException {
+    /*public static void main(String[] args) throws InterruptedException {
         ManagedChannelBuilder<?> channelBuilder =
             NettyChannelBuilder.forAddress("127.0.0.1", 8080)
                 .nameResolverFactory(new DnsNameResolverProvider())
@@ -64,5 +64,5 @@ public class GRPCNoServerTest {
         Thread.sleep(2 * 1000);
 
         Assert.assertEquals(status[0].getCode(), Status.UNAVAILABLE.getCode());
-    }
+    }*/
 }

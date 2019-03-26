@@ -23,11 +23,11 @@ import io.netty.util.internal.ConcurrentSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import org.apache.skywalking.apm.network.common.KeyIntValuePair;
-import org.apache.skywalking.apm.network.language.agent.*;
-import org.apache.skywalking.apm.network.register.v2.NetAddressMapping;
-import org.apache.skywalking.apm.network.register.v2.NetAddresses;
-import org.apache.skywalking.apm.network.register.v2.RegisterGrpc;
+//import org.apache.skywalking.apm.network.common.KeyIntValuePair;
+//import org.apache.skywalking.apm.network.language.agent.*;
+//import org.apache.skywalking.apm.network.register.v2.NetAddressMapping;
+//import org.apache.skywalking.apm.network.register.v2.NetAddresses;
+//import org.apache.skywalking.apm.network.register.v2.RegisterGrpc;
 
 import static org.apache.skywalking.apm.agent.core.conf.Config.Dictionary.SERVICE_CODE_BUFFER_SIZE;
 
@@ -53,7 +53,7 @@ public enum NetworkAddressDictionary {
         }
     }
 
-    public void syncRemoteDictionary(
+    /*public void syncRemoteDictionary(
         RegisterGrpc.RegisterBlockingStub networkAddressRegisterServiceBlockingStub) {
         if (unRegisterServices.size() > 0) {
             NetAddressMapping networkAddressMappings = networkAddressRegisterServiceBlockingStub.doNetworkAddressRegister(
@@ -65,5 +65,5 @@ public enum NetworkAddressDictionary {
                 }
             }
         }
-    }
+    }*/
 }

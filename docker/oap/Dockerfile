@@ -33,8 +33,9 @@ RUN set -ex; \
 WORKDIR $DIST_NAME
 
 COPY log4j2.xml config/
+COPY wait-for-it.sh .
 COPY docker-entrypoint.sh .
 
 EXPOSE 12800 11800
 
-ENTRYPOINT ["sh", "docker-entrypoint.sh"]
+ENTRYPOINT ["./wait-for-it.sh", "elasticsearch:9200", "--", "sh", "docker-entrypoint.sh"]

@@ -24,9 +24,23 @@ services:
       - 9200:9200
       - 9300:9300
     environment:
+      TIME_ZONE: Asia/Shanghai
       discovery.type: single-node
+  kibana:
+    image: docker.elastic.co/kibana/kibana:6.3.2
+    container_name: kibana
+    depends_on:
+      - elasticsearch
+    links:
+      - elasticsearch
+    restart: always
+    ports:
+      - 5601:5601
+    environment:
+      TIME_ZONE: Asia/Shanghaiex
   oap:
     image: skywalking/oap
+    build: ./oap
     container_name: oap
     depends_on:
       - elasticsearch
@@ -36,10 +50,13 @@ services:
     ports:
       - 11800:11800
       - 12800:12800
+    environment:
+      TIME_ZONE: Asia/Shanghai
     volumes:
       - ./config:/apache-skywalking-apm-incubating/config:ro
   ui:
     image: skywalking/ui
+    build: ./ui
     container_name: ui
     depends_on:
       - oap
@@ -49,4 +66,5 @@ services:
     ports:
       - 8080:8080
     environment:
+      TIME_ZONE: Asia/Shanghai
       collector.ribbon.listOfServers: oap:12800
