@@ -78,9 +78,6 @@ import org.elasticsearch.index.reindex.BulkByScrollResponse;
 import org.elasticsearch.index.reindex.DeleteByQueryRequest;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 
-/**
- *
- */
 @Slf4j
 public class ElasticSearch7Client extends ElasticSearchClient {
     public ElasticSearch7Client(final String clusterNodes,
@@ -89,10 +86,12 @@ public class ElasticSearch7Client extends ElasticSearchClient {
                                 final String trustStorePass,
                                 final String user,
                                 final String password,
-                                List<IndexNameConverter> indexNameConverters) {
+                                List<IndexNameConverter> indexNameConverters,
+                                int connectTimeout,
+                                int socketTimeout) {
         super(
             clusterNodes, protocol, trustStorePath, trustStorePass, user, password,
-            indexNameConverters
+            indexNameConverters, connectTimeout, socketTimeout
         );
     }
 
@@ -175,7 +174,7 @@ public class ElasticSearch7Client extends ElasticSearchClient {
         indexName = formatIndexName(indexName);
         try {
             Response response = client.getLowLevelClient()
-                                      .performRequest(new Request(HttpGet.METHOD_NAME, indexName));
+                                      .performRequest(new Request(HttpGet.METHOD_NAME, "/" + indexName));
             int statusCode = response.getStatusLine().getStatusCode();
             if (statusCode != HttpStatus.SC_OK) {
                 healthChecker.health();
@@ -218,7 +217,7 @@ public class ElasticSearch7Client extends ElasticSearchClient {
         name = formatIndexName(name);
         try {
             Response response = client.getLowLevelClient()
-                                      .performRequest(new Request(HttpGet.METHOD_NAME, "_template/" + name));
+                                      .performRequest(new Request(HttpGet.METHOD_NAME, "/_template/" + name));
             int statusCode = response.getStatusLine().getStatusCode();
             if (statusCode != HttpStatus.SC_OK) {
                 healthChecker.health();
@@ -393,6 +392,10 @@ public class ElasticSearch7Client extends ElasticSearchClient {
         return HttpStatus.SC_OK;
     }
 
+    /**
+     * @since 8.7.0 SkyWalking don't use sync bulk anymore. This method is just kept for unexpected case in the future.
+     */
+    @Deprecated
     @Override
     public void synchronousBulk(BulkRequest request) {
         request.timeout(TimeValue.timeValueMinutes(2));

@@ -46,14 +46,25 @@ public class CoreModuleConfig extends ModuleConfig {
     private String gRPCSslTrustedCAPath;
     private int maxConcurrentCallsPerConnection;
     private int maxMessageSize;
-    private boolean enableDatabaseSession;
     private int topNReportPeriod;
+    /**
+     * The period of L1 aggregation flush. Unit is ms.
+     */
+    private long l1FlushPeriod = 500;
+    /**
+     * Enable database flush session.
+     */
+    private boolean enableDatabaseSession;
+    /**
+     * The threshold of session time. Unit is ms. Default value is 70s.
+     */
+    private long storageSessionTimeout = 70_000;
     private final List<String> downsampling;
     /**
      * The period of doing data persistence. Unit is second.
      */
-
-    private long persistentPeriod = 3;
+    @Setter
+    private long persistentPeriod = 25;
 
     private boolean enableDataKeeperExecutor = true;
 
@@ -133,6 +144,33 @@ public class CoreModuleConfig extends ModuleConfig {
     @Setter
     @Getter
     private String searchableLogsTags = "";
+    /**
+     * Define the set of Alarm tag keys, which should be searchable through the GraphQL.
+     *
+     * @since 8.6.0
+     */
+    @Setter
+    @Getter
+    private String searchableAlarmTags = "";
+
+    /**
+     * The number of threads used to prepare metrics data to the storage.
+     *
+     * @since 8.7.0
+     */
+    @Setter
+    @Getter
+    private int prepareThreads = 2;
+
+    @Getter
+    @Setter
+    private boolean enableEndpointNameGroupingByOpenapi = true;
+
+    /**
+     * The maximum size in bytes allowed for request headers.
+     * Use -1 to disable it.
+     */
+    private int httpMaxRequestHeaderSize = 8192;
 
     public CoreModuleConfig() {
         this.downsampling = new ArrayList<>();

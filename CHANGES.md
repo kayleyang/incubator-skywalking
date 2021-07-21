@@ -2,83 +2,137 @@ Changes by Version
 ==================
 Release Notes.
 
-8.5.0
+8.7.0
 ------------------
+
 #### Project
-* **Incompatible Change**. Indices and templates of ElasticSearch(6/7, including zipkin-elasticsearch7) storage option have been changed. 
-* Update frontend-maven-plugin to 1.11.0, for Download node x64 binary on Apple Silicon.
-* Add E2E test for VM monitoring that metrics from Prometheus node-exporter.
-* Upgrade lombok to 1.18.16.
+
+* Extract dependency management to a bom.
+* Add JDK 16 to test matrix.
+* DataCarrier consumer add a new event notification, call `nothingToConsume` method if the queue has no element to
+  consume.
+* Build and push snapshot Docker images to GitHub Container Registry, this is only for people who want to help to test
+  the master branch codes, please don't use in production environments.
 
 #### Java Agent
-* Remove invalid mysql configuration in agent.config.
-* Add net.bytebuddy.agent.builder.AgentBuilder.RedefinitionStrategy.Listener to show detail message when redefine errors occur.
-* Fix ClassCastException of log4j gRPC reporter.
-* Fix NPE when Kafka reporter activated.
-* Enhance gRPC log appender to allow layout pattern.
-* Fix apm-dubbo-2.7.x-plugin memory leak due to some Dubbo RpcExceptions.
-* Fix lettuce-5.x-plugin get null host in redis sentinel mode.
-* Fix ClassCastException by making CallbackAdapterInterceptor to implement EnhancedInstance interface in the spring-kafka plugin.
-* Fix NullPointerException with KafkaProducer.send(record).
-* Support config `agent.span_limit_per_segment` can be changed in the runtime.
-* Collect and report agent starting / shutdown events.
-* Support jedis pipeline in jedis-2.x-plugin.
-* Fix apm-toolkit-log4j-2.x-activation no trace Id in async log.
+
+* Supports modifying span attributes in async mode.
+* Agent supports the collection of JVM arguments and jar dependency information.
+* [Temporary] Support authentication for log report channel. This feature and grpc channel is going to be removed after
+  Satellite 0.2.0 release.
+* Remove deprecated gRPC method, `io.grpc.ManagedChannelBuilder#nameResolverFactory`.
+  See [gRPC-java 7133](https://github.com/grpc/grpc-java/issues/7133) for more details.
+* Add `Neo4j-4.x` plugin.
+* Correct `profile.duration` to `profile.max_duration` in the default `agent.config` file.
+* Fix the response time of gRPC.
+* Support parameter collection for SqlServer.
+* Add `ShardingSphere-5.0.0-beta` plugin.
+* Fix some method exception error.
+* Fix async finish repeatedly in `spring-webflux-5.x-webclient` plugin.
+* Add agent plugin to support Sentinel.
+* Move `ehcache-2.x` plugin as an optional plugin.
+* Support `guava-cache` plugin.
+* Enhance the compatibility of `mysql-8.x-plugin` plugin.
+* Support Kafka SASL login module.
+* Fix gateway plugin async finish repeatedly when fallback url configured.
+* Chore: polish methods naming for `Spring-Kafka` plugins.
+* Remove plugins for ShardingSphere legacy version.
 
 #### OAP-Backend
-* Allow user-defined `JAVA_OPTS` in the startup script.
-* Metrics combination API supports abandoning results.
-* Add a new concept "Event" and its implementations to collect events.
-* Add some defensive codes for NPE and bump up Kubernetes client version to expose exception stack trace.
-* Update the `timestamp` field type for `LogQuery`.
-* Support Zabbix protocol to receive agent metrics.
-* Update the Apdex metric combine calculator.
-* Enhance `MeterSystem` to allow creating metrics with same `metricName` / `function` / `scope`.
-* Storage plugin supports postgresql.
-* Fix kubernetes.client.opeanapi.ApiException.
-* Remove filename suffix in the meter active file config.
-* Introduce log analysis language (LAL).
-* Fix alarm httpclient connection leak.
-* Add `sum` function in meter system.
-* Remove Jaeger receiver.
-* Remove the experimental Zipkin span analyzer.
-* Upgrade the Zipkin Elasticsearch storage from 6 to 7.
-* Require Zipkin receiver must work with `zipkin-elasticsearch7` storage option.
-* Fix `DatabaseSlowStatementBuilder` statement maybe null.
-* Remove fields of parent entity in the relation sources. 
-* Save Envoy http access logs when error occurs.
-* Fix wrong `service_instance_sla` setting in the `topology-instance.yml`.
-* Fix wrong metrics name setting in the `self-observability.yml`.
-* Add telemetry data about metrics in, metrics scraping, mesh error and trace in metrics to zipkin receiver.
-* Fix tags store of log and trace on h2/mysql/pg storage.
-* Merge indices by Metrics Function and Meter Function in Elasticsearch Storage. 
-* Fix receiver don't need to get itself when healthCheck
-* Remove group concept from AvgHistogramFunction. Heatmap(function result) doesn't support labels.
-* Support metrics grouped by scope labelValue in MAL, no need global same labelValue as before.
-* Add functions in MAL to filter metrics according to the metric value.
-* Optimize the self monitoring grafana dashboard.
+
+* Disable Spring sleuth meter analyzer by default.
+* Only count 5xx as error in Envoy ALS receiver.
+* Upgrade apollo core caused by CVE-2020-15170.
+* Upgrade kubernetes client caused by CVE-2020-28052.
+* Upgrade Elasticsearch 7 client caused by CVE-2020-7014.
+* Upgrade jackson related libs caused by CVE-2018-11307, CVE-2018-14718 ~ CVE-2018-14721, CVE-2018-19360 ~
+  CVE-2018-19362, CVE-2019-14379, CVE-2019-14540, CVE-2019-14892, CVE-2019-14893, CVE-2019-16335, CVE-2019-16942,
+  CVE-2019-16943, CVE-2019-17267, CVE-2019-17531, CVE-2019-20330, CVE-2020-8840, CVE-2020-9546, CVE-2020-9547,
+  CVE-2020-9548, CVE-2018-12022, CVE-2018-12023, CVE-2019-12086, CVE-2019-14439, CVE-2020-10672, CVE-2020-10673,
+  CVE-2020-10968, CVE-2020-10969, CVE-2020-11111, CVE-2020-11112, CVE-2020-11113, CVE-2020-11619, CVE-2020-11620,
+  CVE-2020-14060, CVE-2020-14061, CVE-2020-14062, CVE-2020-14195, CVE-2020-24616, CVE-2020-24750, CVE-2020-25649,
+  CVE-2020-35490, CVE-2020-35491, CVE-2020-35728 and CVE-2020-36179 ~ CVE-2020-36190.
+* Exclude log4j 1.x caused by CVE-2019-17571.
+* Upgrade log4j 2.x caused by CVE-2020-9488.
+* Upgrade nacos libs caused by CVE-2021-29441 and CVE-2021-29442.
+* Upgrade netty caused by CVE-2019-20444, CVE-2019-20445, CVE-2019-16869, CVE-2020-11612, CVE-2021-21290, CVE-2021-21295
+  and CVE-2021-21409.
+* Upgrade consul client caused by CVE-2018-1000844, CVE-2018-1000850.
+* Upgrade zookeeper caused by CVE-2019-0201, zookeeper cluster coordinator plugin now requires zookeeper server 3.5+.
+* Upgrade snake yaml caused by CVE-2017-18640.
+* Upgrade embed tomcat caused by CVE-2020-13935.
+* Upgrade commons-lang3 to avoid potential NPE in some JDK versions.
+* OAL supports generating metrics from events.
+* Support endpoint name grouping by OpenAPI definitions.
+* Concurrent create PrepareRequest when persist Metrics
+* Fix CounterWindow increase computing issue.
+* Performance: optimize Envoy ALS analyzer performance in high traffic load scenario (reduce ~1cpu in ~10k RPS).
+* Performance: trim useless metadata fields in Envoy ALS metadata to improve performance.
+* Fix: slowDBAccessThreshold dynamic config error when not configured.
+* Performance: cache regex pattern and result, optimize string concatenation in Envy ALS analyzer.
+* Performance: cache metrics id and entity id in `Metrics` and `ISource`.
+* Performance: enhance persistent session mechanism, about differentiating cache timeout for different dimensionality
+  metrics. The timeout of the cache for minute and hour level metrics has been prolonged to ~5 min.
+* Performance: Add L1 aggregation flush period, which reduce the CPU load and help young GC.
+* Support connectTimeout and socketTimeout settings for ElasticSearch6 and ElasticSearch7 storages.
+* Re-implement storage session mechanism, cached metrics are removed only according to their last access timestamp,
+  rather than first time. This makes sure hot data never gets removed unexpectedly.
+* Support session expired threshold configurable.
+* Fix InfluxDB storage-plugin Metrics#multiGet issue.
+* Replace zuul proxy with spring cloud gateway 2.x. in webapp module.
+* Upgrade etcd cluster coordinator and dynamic configuration to v3.x.
+* Configuration: Allow configuring server maximum request header size.
+* Add thread state metric and class loaded info metric to JVMMetric.
+* Performance: compile LAL DSL statically and run with type checked.
+* Add pagination to event query protocol.
+* Performance: optimize Envoy error logs persistence performance.
+* Support envoy `cluster manager` metrics.
+* Performance: remove the synchronous persistence mechanism from batch ElasticSearch DAO. Because the current enhanced
+  persistent session mechanism, don't require the data queryable immediately after the insert and update anymore.
+* Performance: share `flushInterval` setting for both metrics and record data, due
+  to `synchronous persistence mechanism` removed. Record flush interval used to be hardcoded as 10s.
+* Remove `syncBulkActions` in ElasticSearch storage option.
+* Increase the default bulkActions(env, SW_STORAGE_ES_BULK_ACTIONS) to 5000(from 1000).
+* Increase the flush interval of ElasticSearch indices to 15s(from 10s)
+* Provide distinct for elements of metadata lists. Due to the more aggressive asynchronous flush, metadata lists have
+  more chances including duplicate elements. Don't need this as indicate anymore.
+* Reduce the flush period of hour and day level metrics, only run in 4 times of regular persistent period. This means
+  default flush period of hour and day level metrics are 25s * 4.
+* Performance: optimize IDs read of ElasticSearch storage options(6 and 7). Use the physical index rather than template
+  alias name.
+* Adjust index refresh period as INT(flushInterval * 2/3), it used to be as same as bulk flush period. At the edge case,
+  in low traffic(traffic < bulkActions in the whole period), there is a possible case, 2 period bulks are included in
+  one index refresh rebuild operation, which could cause version conflicts. And this case can't be fixed
+  through `core/persistentPeriod` as the bulk fresh is not controlled by the persistent timer anymore.
+* The `core/maxSyncOperationNum` setting(added in 8.5.0) is removed due to metrics persistence is fully asynchronous.
+* The `core/syncThreads` setting(added in 8.5.0) is removed due to metrics persistence is fully asynchronous.
+* Optimization: Concurrency mode of execution stage for metrics is removed(added in 8.5.0). Only concurrency of prepare
+  stage is meaningful and kept.
+* Fix `-meters` metrics topic isn't created with namespace issue
+* Enhance persistent session timeout mechanism. Because the enhanced session could cache the metadata metrics forever,
+  new timeout mechanism is designed for avoiding this specific case.
+* Fix Kafka transport topics are created duplicated with and without namespace issue
+* Fix the persistent session timeout mechanism bug.
+* Fix possible version_conflict_engine_exception in bulk execution.
+* Fix PrometheusMetricConverter may throw an `IllegalArgumentException` when convert metrics to SampleFamily
+* Filtering NaN value samples when build SampleFamily  
 
 #### UI
-* Update selector scroller to show in all pages.
-* Implement searching logs with date.
-* Add nodejs 14 compiling.
-* Fix trace id by clear search conditions.
-* Search endpoints with keywords.
-* Fix pageSize on logs page.
-* Update echarts version to 5.0.2.
-* Fix instance dependency on the topology page.
-* Fix resolved url for vue-property-decorator.
-* Show instance attributes.
-* Copywriting grammar fix.
-* Fix log pages tags column not updated.
-* Fix the problem that the footer and topology group is shaded when the topology radiation is displayed.
-* When the topology radiation chart is displayed, the corresponding button should be highlighted.
+
+* Fix the date component for log conditions.
+* Fix selector keys for duplicate options.
+* Add Python celery plugin.
+* Fix default config for metrics.
+* Fix trace table for profile ui.
+* Fix the error of server response time in the topology.
+* Fix chart types for setting metrics configure.
 
 #### Documentation
-* Polish documentation due to we have covered all tracing, logging, and metrics fields.
-* Adjust documentation about Zipkin receiver.
 
-All issues and pull requests are [here](https://github.com/apache/skywalking/milestone/76?closed=1)
+* Add FAQ about `Elasticsearch exception type=version_conflict_engine_exception since 8.7.0`
+* Add Self Observability service discovery (k8s).
+
+All issues and pull requests are [here](https://github.com/apache/skywalking/milestone/90?closed=1)
 
 ------------------
 Find change logs of all versions [here](changes).
