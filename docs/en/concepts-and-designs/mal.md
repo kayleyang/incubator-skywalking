@@ -1,25 +1,30 @@
+# Meter System -- Analysis Metrics and Meters
+Meter system is a metric streaming process system, which focus on processing and analyzing aggregated metrics data.
+Metrics from OpenTelemetry, Zabbix, Prometheus, SkyWalking meter APIs, etc., are all statistics, so they are processed
+by the meter system.
+
 # Meter Analysis Language
 
-Meter system provides a functional analysis language called MAL(Meter Analysis Language) that lets the user analyze and 
-aggregate meter data in OAP streaming system. The result of an expression can either be ingested by agent analyzer,
-or OC/Prometheus analyzer.
+The meter system provides a functional analysis language called MAL (Meter Analysis Language) that lets users analyze and
+aggregate meter data in the OAP streaming system. The result of an expression can either be ingested by the agent analyzer,
+or the OpenTelemetry/Prometheus analyzer.
 
 ## Language data type
 
-In MAL, an expression or sub-expression can evaluate to one of two types:
+In MAL, an expression or sub-expression can evaluate to one of the following two types:
 
- - Sample family -  a set of samples(metrics) containing a range of metrics whose name is identical.
- - Scalar - a simple numeric value. it supports integer/long, floating/double,
+ - **Sample family**:  A set of samples (metrics) containing a range of metrics whose names are identical.
+ - **Scalar**: A simple numeric value that supports integer/long and floating/double.
 
 ## Sample family
 
-A set of samples, which is as the basic unit in MAL. For example:
+A set of samples, which acts as the basic unit in MAL. For example:
 
 ```
 instance_trace_count
 ```
 
-The above sample family might contains following simples which are provided by external modules, for instance, agent analyzer:
+The sample family above may contain the following samples which are provided by external modules, such as the agent analyzer:
 
 ```
 instance_trace_count{region="us-west",az="az-1"} 100
@@ -29,33 +34,68 @@ instance_trace_count{region="asia-north",az="az-1"} 33
 
 ### Tag filter
 
-MAL support four type operations to filter samples in a sample family:
+MAL supports four type operations to filter samples in a sample family by tag:
 
- - tagEqual: Filter tags that are exactly equal to the provided string.
- - tagNotEqual: Filter tags that are not equal to the provided string.
- - tagMatch: Filter tags that regex-match the provided string.
- - tagNotMatch: Filter labels that do not regex-match the provided string.
+ - tagEqual: Filter tags exactly equal to the string provided.
+ - tagNotEqual: Filter tags not equal to the string provided.
+ - tagMatch: Filter tags that regex-match the string provided.
+ - tagNotMatch: Filter tags that do not regex-match the string provided.
 
 For example, this filters all instance_trace_count samples for us-west and asia-north region and az-1 az:
 
 ```
 instance_trace_count.tagMatch("region", "us-west|asia-north").tagEqual("az", "az-1")
 ```
+
 ### Value filter
 
-MAL support six type operations to filter samples in a sample family by value:
+MAL supports six type operations to filter samples in a sample family by value:
 
-- valueEqual: Filter values that are exactly equal to the provided value.
-- valueNotEqual: Filter values that are not equal to the provided value.
-- valueGreater: Filter values that greater than the provided value.
-- valueGreaterEqual: Filter values that greater or equal the provided value.
-- valueLess: Filter values that less than the provided value.
-- valueLessEqual: Filter values that less or equal the provided value.
+- valueEqual: Filter values exactly equal to the value provided.
+- valueNotEqual: Filter values not equal to the value provided.
+- valueGreater: Filter values greater than the value provided.
+- valueGreaterEqual: Filter values greater than or equal to the value provided.
+- valueLess: Filter values less than the value provided.
+- valueLessEqual: Filter values less than or equal to the value provided.
 
 For example, this filters all instance_trace_count samples for values >= 33:
 
 ```
 instance_trace_count.valueGreaterEqual(33)
+```
+
+### Tag manipulator
+MAL allows tag manipulators to change (i.e. add/delete/update) tags and their values.
+
+#### K8s
+MAL supports using the metadata of K8s to manipulate the tags and their values.
+This feature requires authorizing the OAP Server to access K8s's `API Server`.
+
+##### retagByK8sMeta
+`retagByK8sMeta(newLabelName, K8sRetagType, existingLabelName, namespaceLabelName)`. Add a new tag to the sample family based on the value of an existing label. Provide several internal converting types, including
+- K8sRetagType.Pod2Service
+
+Add a tag to the sample using `service` as the key, `$serviceName.$namespace` as the value, and according to the given value of the tag key, which represents the name of a pod.
+
+The pods and services are read from the Kubernetes API server in the background and cached, by the rules of
+[how the Kubernetes metadata is read and cached](../setup/envoy/als_setting.md#how-the-kubernetes-metadata-is-read-and-cached),
+with the `mal` cache time. A `retagByK8sMeta` first queues the reads of the pods of its samples not read yet, then waits
+for them up to `core.default.malMetadataReadTimeout` (`SW_CORE_MAL_METADATA_READ_TIMEOUT`, 2000 milliseconds by default)
+in all, however many pods it has. A sample whose pod is not read by then gets an empty service; the read goes on in the
+background, so the next samples of the pod get the service. Keep the timeout under the sender's, such as the
+5 seconds of the OpenTelemetry Collector's OTLP exporter, which sends the data again when it times out.
+
+For example:
+```
+container_cpu_usage_seconds_total{namespace=default, container=my-nginx, cpu=total, pod=my-nginx-5dc4865748-mbczh} 2
+```
+Expression:
+```
+container_cpu_usage_seconds_total.retagByK8sMeta('service' , K8sRetagType.Pod2Service , 'pod' , 'namespace')
+```
+Output:
+```
+container_cpu_usage_seconds_total{namespace=default, container=my-nginx, cpu=total, pod=my-nginx-5dc4865748-mbczh, service='nginx-service.default'} 2
 ```
 
 ### Binary operators
@@ -69,7 +109,7 @@ The following binary arithmetic operators are available in MAL:
 
 Binary operators are defined between scalar/scalar, sampleFamily/scalar and sampleFamily/sampleFamily value pairs.
 
-Between two scalars: they evaluate to another scalar that is the result of the operator applied to both scalar operands:
+Between two scalars: they evaluate to another scalar that is the result of the operator being applied to both scalar operands:
 
 ```
 1 + 2
@@ -79,13 +119,13 @@ Between a sample family and a scalar, the operator is applied to the value of ev
 
 ```
 instance_trace_count + 2
-``` 
+```
 
-or 
+or
 
 ```
 2 + instance_trace_count
-``` 
+```
 
 results in
 
@@ -95,15 +135,15 @@ instance_trace_count{region="us-east",az="az-3"} 22 // 20 + 2
 instance_trace_count{region="asia-north",az="az-1"} 35 // 33 + 2
 ```
 
-Between two sample families, a binary operator is applied to each sample in the left-hand side sample family and 
-its matching sample in the right-hand sample family. A new sample family with empty name will be generated.
-Only the matched tags will be reserved. Samples for which no matching sample in the right-hand sample family are not in the result.
+Between two sample families, a binary operator is applied to each sample in the sample family on the left and
+its matching sample in the sample family on the right. A new sample family with empty name will be generated.
+Only the matched tags will be reserved. Samples with no matching samples in the sample family on the right will not be found in the result.
 
-Another sample family `instance_trace_analysis_error_count` is 
+Another sample family `instance_trace_analysis_error_count` is
 
 ```
 instance_trace_analysis_error_count{region="us-west",az="az-1"} 20
-instance_trace_analysis_error_count{region="asia-north",az="az-1"} 11 
+instance_trace_analysis_error_count{region="asia-north",az="az-1"} 11
 ```
 
 Example expression:
@@ -112,47 +152,72 @@ Example expression:
 instance_trace_analysis_error_count / instance_trace_count
 ```
 
-This returns a result sample family containing the error rate of trace analysis. The samples with region us-west and az az-3 
+This returns a resulting sample family containing the error rate of trace analysis. Samples with region us-east and az az-3
 have no match and will not show up in the result:
 
 ```
-{region="us-west",az="az-1"} 0.8  // 20 / 100
+{region="us-west",az="az-1"} 0.2  // 20 / 100
 {region="asia-north",az="az-1"} 0.3333  // 11 / 33
 ```
+
+#### Safe division
+
+The binary `/` operator produces `Infinity` when the right-hand value is `0`, and `NaN` when both
+sides are `0` (NaN samples are silently dropped during evaluation). Either result is rarely useful
+for downstream metrics. The `safeDiv` method on a sample family substitutes `0` for the result whenever
+the divisor is `0`. In other cases it follows normal division semantics, except that dividing by an
+empty sample family yields an empty result instead of `Infinity`/`NaN`-style output:
+
+```
+gen_ai_server_request_duration_sum.sum(['service_name']).increase('PT1M')
+    .safeDiv(gen_ai_server_request_duration_count.sum(['service_name']).increase('PT1M')) * 1000
+```
+
+`safeDiv` accepts either a sample family or a scalar number argument. Use it when the denominator
+is a counter that may legitimately be zero in a given window (e.g. request count, error count).
 
 ### Aggregation Operation
 
 Sample family supports the following aggregation operations that can be used to aggregate the samples of a single sample family,
-resulting in a new sample family of fewer samples(even single one) with aggregated values:
+resulting in a new sample family having fewer samples (sometimes having just a single sample) with aggregated values:
 
  - sum (calculate sum over dimensions)
  - min (select minimum over dimensions)
  - max (select maximum over dimensions)
  - avg (calculate the average over dimensions)
- 
-These operations can be used to aggregate over all label dimensions or preserve distinct dimensions by inputting `by` parameter. 
+ - count (calculate the count over dimensions, the last tag will be counted)
+
+These operations can be used to aggregate overall label dimensions or preserve distinct dimensions by inputting `by` parameter( the keyword `by` could be omitted)
 
 ```
-<aggr-op>(by: <tag1, tag2, ...>)
+<aggr-op>(by=[<tag1>, <tag2>, ...])
 ```
 
 Example expression:
 
 ```
-instance_trace_count.sum(by: ['az'])
+instance_trace_count.sum(by=['az'])
 ```
 
-will output a result:
+will output the following result:
 
 ```
 instance_trace_count{az="az-1"} 133 // 100 + 33
 instance_trace_count{az="az-3"} 20
 ```
 
+___
+**Note, aggregation operations affect the samples from one bulk only. If the metrics are reported parallel from multiple instances/nodes
+through different SampleFamily, this aggregation would NOT work.**
+
+In the best practice for this scenario, build the metric with labels that represent each instance/node. Then use the 
+[AggregateLabels Operation in MQE](../api/metrics-query-expression.md#aggregatelabels-operation) to aggregate the metrics.
+___
+
 ### Function
 
-`Duraton` is a textual representation of a time range. The formats accepted are based on the ISO-8601 duration format {@code PnDTnHnMn.nS}
- with days considered to be exactly 24 hours.
+`Duration` is a textual representation of a time range. The formats accepted are based on the ISO-8601 duration format {@code PnDTnHnMn.nS}
+ where a day is regarded as exactly 24 hours.
 
 Examples:
  - "PT20.345S" -- parses as "20.345 seconds"
@@ -165,40 +230,95 @@ Examples:
  - "-P-6H+3M"  -- parses as "+6 hours and -3 minutes"
 
 #### increase
-`increase(Duration)`. Calculates the increase in the time range.
+`increase(Duration)`: Calculates the increase in the time range.
 
 #### rate
-`rate(Duration)`. Calculates the per-second average rate of increase of the time range.
+`rate(Duration)`: Calculates the per-second average rate of increase in the time range.
 
 #### irate
-`irate()`. Calculates the per-second instant rate of increase of the time range.
+`irate()`: Calculates the per-second instant rate of increase in the time range.
 
 #### tag
-`tag({allTags -> })`. Update tags of samples. User can add, drop, rename and update tags.
+`tag({allTags -> })`: Updates tags of samples. User can add, drop, rename and update tags.
 
 #### histogram
-`histogram(le: '<the tag name of le>')`. Transforms less based histogram buckets to meter system histogram buckets. 
-`le` parameter hints the tag name of a bucket. 
+`histogram(le: '<the tag name of le>')`: Transforms less-based histogram buckets to meter system histogram buckets.
+`le` parameter represents the tag name of the bucket.
+
+**Note** In SkyWalking, the histogram buckets are based on time and will be transformed to the `milliseconds-based`
+histogram buckets in the meter system. (If the metrics from the Prometheus are based on the `seconds-based` histogram
+buckets, will multiply the bucket value by 1000.)
 
 #### histogram_percentile
-`histogram_percentile([<p scalar>])`. Hints meter-system to calculates the p-percentile (0 ≤ p ≤ 100) from the buckets. 
+`histogram_percentile([<p scalar>])`: Represents the meter-system to calculate the p-percentile (0 ≤ p ≤ 100) from the buckets.
 
 #### time
-`time()`. returns the number of seconds since January 1, 1970 UTC.
+`time()`: Returns the number of seconds since January 1, 1970 UTC.
+
+#### foreach
+`forEach([string_array], Closure<Void> each)`: Iterates all samples according to the first array argument, and provide two parameters in the second closure argument:
+1. `element`: element in the array.
+2. `tags`: tags in each sample.
+
+## Extension Functions
+
+MAL supports extension functions via the `namespace::method()` syntax. Extensions are pluggable modules
+that add custom capabilities to MAL without modifying the core language. They are discovered at startup
+via Java `ServiceLoader`.
+
+### Syntax
+
+Extension functions are called with a `::` separator between the namespace and method name:
+
+```
+metric.sum(['svc']).myext::transform(2.0)
+```
+
+The `::` separator distinguishes extension calls from built-in `SampleFamily` methods (like `.sum()`,
+`.tag()`, `.filter()`). Method names only need to be unique within their namespace.
+
+Available extension namespaces depend on which extension modules are deployed with the OAP server.
+
+### Supported Parameter Types
+
+Extension methods accept the following argument types from MAL expressions:
+
+| Java Type | MAL Argument Example |
+|-----------|---------------------|
+| `String` | `"value"` |
+| `double` | `2.0` |
+| `int` | `100` |
+| `List<String>` | `["tag1", "tag2"]` |
+
+The first parameter is always `SampleFamily`, which is automatically bound to the current value in the
+method chain. Only the additional parameters need to be specified in the MAL expression.
+
+### Error Handling
+
+The MAL compiler validates extension calls at compile time:
+- Unknown namespace or method name results in a compilation error.
+- Mismatched argument count results in a compilation error.
+- Type mismatches between MAL arguments and Java parameter types result in a compilation error.
+
+### Building Extensions
+
+For developers who want to create custom MAL extension functions, see the
+[MAL Extension Developer Guide](../guides/mal-extension.md).
 
 ## Down Sampling Operation
-MAL should instruct meter-system how to do downsampling for metrics. It doesn't only refer to aggregate raw samples to 
-`minute` level, but also hints data from `minute` to higher levels, for instance, `hour` and `day`. 
+MAL should instruct meter-system on how to downsample for metrics. It doesn't only refer to aggregate raw samples to
+`minute` level, but also expresses data from `minute` in higher levels, such as `hour` and `day`.
 
-Down sampling function is called `downsampling` in MAL, it accepts the following types:
+Down sampling function is called `downsampling` in MAL, and it accepts the following types:
 
- - AVG
- - SUM
- - LATEST
- - MIN (TODO)
- - MAX (TODO)
- - MEAN (TODO)
- - COUNT (TODO)
+- `AVG`: Calculates the average value of the samples.
+- `SUM`: Calculates the total sum of the samples.
+- `LATEST`: Selects the most recent sample value.
+- `SUM_PER_MIN`: Calculates the sum of the samples specifically per minute.
+- `MIN`: Selects the minimum sample value.
+- `MAX`: Selects the maximum sample value.
+- `MEAN`: Calculates the mathematical mean of all sample values.
+- `COUNT`: Computes the total number of metric data points or events recorded.
 
 The default type is `AVG`.
 
@@ -210,15 +330,104 @@ last_server_state_sync_time_in_seconds.tagEqual('production', 'catalog').downsam
 
 ## Metric level function
 
-Metric has three level, service, instance and endpoint. They extract level relevant labels from metric labels, then
- hints meter-system which level this metrics should be.
+They extract level relevant labels from metric labels, then informs the meter-system the level and [layer](../../../oap-server/server-core/src/main/java/org/apache/skywalking/oap/server/core/analysis/Layer.java) to which this metric belongs.
 
- - `servcie([svc_label1, svc_label2...])` extracts service level labels from the array argument.
- - `instance([svc_label1, svc_label2...], [ins_label1, ins_label2...])` extracts service level labels from the first array argument, 
-                                                                        extracts instance level labels from the second array argument.
- - `endpoint([svc_label1, svc_label2...], [ep_label1, ep_label2...])` extracts service level labels from the first array argument, 
-                                                                      extracts endpoint level labels from the second array argument.
+ - `service([svc_label1, svc_label2...], Layer)` extracts service level labels from the array argument, extracts layer from `Layer` argument.
+ - `instance([svc_label1, svc_label2...], [ins_label1, ins_label2...], Layer, Closure<Map<String, String>> propertiesExtractor)` extracts service level labels from the first array argument,
+                                                                        extracts instance level labels from the second array argument, extracts layer from `Layer` argument, `propertiesExtractor` is an optional closure that extracts instance properties from `tags`, e.g. `{ tags -> ['pod': tags.pod, 'namespace': tags.namespace] }`.
+ - `endpoint([svc_label1, svc_label2...], [ep_label1, ep_label2...], Layer)` extracts service level labels from the first array argument,
+                                                                      extracts endpoint level labels from the second array argument, extracts layer from `Layer` argument.
+ - `process([svc_label1, svc_label2...], [ins_label1, ins_label2...], [ps_label1, ps_label2...], layer_lable)` extracts service level labels from the first array argument,
+                                                                      extracts instance level labels from the second array argument, extracts process level labels from the third array argument, extracts layer label from fourse argument.
+ - `serviceRelation(DetectPoint, [source_svc_label1...], [dest_svc_label1...], Layer)` DetectPoint including `DetectPoint.CLIENT` and `DetectPoint.SERVER`,
+   extracts `sourceService` labels from the first array argument, extracts `destService` labels from the second array argument, extracts layer from `Layer` argument.
+ - `processRelation(detect_point_label, [service_label1...], [instance_label1...], source_process_id_label, dest_process_id_label, component_label)` extracts `DetectPoint` labels from first argument, the label value should be `client` or `server`.
+   extracts `Service` labels from the first array argument, extracts `Instance` labels from the second array argument, extracts `ProcessID` labels from the fourth and fifth arguments of the source and destination.
+
+## Decorate function
+`decorate({ me -> me.attr0 = ...})`: Decorate the [MeterEntity](../../../oap-server/server-core/src/main/java/org/apache/skywalking/oap/server/core/analysis/meter/MeterEntity.java) with additional attributes. 
+The closure takes the MeterEntity as an argument. This function is used to add additional attributes to the metrics. More details, see [Metrics Additional Attributes](metrics-additional-attributes.md).
+
+## Configuration file
+
+The OAP can load the configuration at bootstrap. If the new configuration is not well-formed, the OAP fails to start up. The files
+are located at `$CLASSPATH/otel-rules`, `$CLASSPATH/meter-analyzer-config`, `$CLASSPATH/envoy-metrics-rules` and `$CLASSPATH/zabbix-rules`.
+
+The file is written in YAML format, defined by the scheme described below. Brackets indicate that a parameter is optional.
+
+A full example can be found [here](../../../oap-server/server-starter/src/main/resources/otel-rules/oap.yaml)
+
+Generic placeholders are defined as follows:
+
+* `<string>`: A regular string.
+* `<closure>`: A closure with custom logic.
+
+```yaml
+# filter the metrics, only those metrics that satisfy this condition will be passed into the `metricsRules` below.
+filter: <closure> # example: '{ tags -> tags.job_name == "vm-monitoring" }'
+# expPrefix is executed before the metrics executes other functions.
+expPrefix: <string>
+# expSuffix is appended to all expression in this file.
+expSuffix: <string>
+# insert metricPrefix into metric name:  <metricPrefix>_<raw_metric_name>
+metricPrefix: <string>
+# Metrics rule allow you to recompute queries.
+metricsRules:
+   [ - <metric_rules> ]
+```
+
+### <metric_rules>
+
+```yaml
+# The name of rule, which combines with a prefix 'meter_' as the index/table name in storage.
+name: <string>
+# MAL expression.
+exp: <string>
+```
+
+### <layer_definitions>
+
+Optional top-level block for declaring custom layers inline alongside the rules that produce
+their telemetry. Each entry is funneled through `Layer.register(name, ordinal, normal)`
+**before** the rules in the same file compile, so a MAL file is fully self-describing — a new
+monitoring target can land as a single MAL file without an enum edit elsewhere in the OAP source.
+
+```yaml
+layerDefinitions:
+  - name: IOT_FLEET    # upper-snake-case, must match [A-Z][A-Z0-9_]*
+    ordinal: 1000      # unique across all layers; >= 1000 recommended
+    normal: true       # true = agent-installed (default), false = conjectured/virtual
+
+metricsRules:
+  - name: device_battery_percentage
+    exp: iot_device_battery_level.tagAverage(['service'], ['host'])
+expSuffix: instance(['host'], ['service'], Layer.IOT_FLEET)
+```
+
+Notes:
+- **Reference a custom layer like a built-in one.** Write `Layer.IOT_FLEET` exactly as you would a
+  built-in such as `Layer.GENERAL` — the compiler lowers every `Layer.<NAME>` reference to a runtime
+  registry lookup, so a custom layer needs no generated static field. (Because the lookup is by name,
+  a misspelled name resolves to `Layer.UNDEFINED` at runtime rather than failing to compile, so keep
+  the name in `layerDefinitions:` and the expression in sync.)
+- **Storage encoding is the ordinal int**, persisted in BanyanDB / Elasticsearch / JDBC. Every
+  OAP node that reads or writes a given layer must agree on its `(name, ordinal)` mapping —
+  deploy a MAL file with `layerDefinitions:` identically across all nodes.
+- **Identical re-registration is a no-op**, so the same `IOT_FLEET` entry can appear in multiple
+  MAL files (and additionally in a LAL file, in `layer-extensions.yml`, or via the
+  `LayerExtension` SPI). Conflicting registrations (same name with different ordinal, or same
+  ordinal with different name) cause OAP boot to fail loudly with the offending file in the
+  stack trace.
+- **Ordinals 0–50** are in active use by the OAP distribution's built-in layers; **51–999** are
+  reserved by convention for future built-ins. External layers should start at `>= 1000` —
+  enforcement is not strict, but staying above the reserved band avoids upgrade-time collisions.
+
+Three other registration paths exist for layers that are **not** specific to a MAL file: an
+operator-managed `layer-extensions.yml`, a `LayerExtension` Java SPI for plugin jars, and the
+built-in static fields in `Layer.java` for distribution layers. See
+[`Layer.java`](../../../oap-server/server-core/src/main/java/org/apache/skywalking/oap/server/core/analysis/Layer.java)
+javadoc for the full picture.
 
 ## More Examples
 
-Please refer to [OAP Self-Observability](../../../oap-server/server-bootstrap/src/main/resources/fetcher-prom-rules/self.yaml)
+Please refer to [OAP Self-Observability](../../../oap-server/server-starter/src/main/resources/otel-rules/oap.yaml).

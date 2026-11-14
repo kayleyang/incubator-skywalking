@@ -1,8 +1,8 @@
-## Log Analyzer
+# Log Analysis
 
-Log analyzer supports native log data. OAP could use Log Analysis Language to
-structurize log content through parse, extract, and save logs. 
-Also the analyzer leverages Meter Analysis Language Engine for further metrics calculation.
+Log analyzer of OAP server supports native log data. OAP could use Log Analysis Language to
+structure log content through parsing, extracting and saving logs. 
+The analyzer also uses Meter Analysis Language Engine for further metrics calculation.
 
 ```yaml
 log-analyzer:
@@ -12,4 +12,6 @@ log-analyzer:
     malFiles: ${SW_LOG_MAL_FILES:""}
 ```
 
-Read [Log Analysis Language](../../concepts-and-designs/lal.md) documentation to learn log structurize and metrics analysis.
+Read the doc on [Log Analysis Language(LAL)](../../concepts-and-designs/lal.md) for more on log structuring and metrics analysis.
+The [LAL's `metrics` extracts](../../concepts-and-designs/lal.md#extractor) provide the capabilities to generate new metrics
+from the raw log text for further calculation.
